@@ -51,9 +51,10 @@ def preprocess_features(data, standardizer=standirdize):
     features_code = data_expanded.loc[0, 0]
     # count of features could vary based on features_code
     features_count = data_expanded.shape[1]
-    features_range = range(1, features_count) 
+    features_range = range(1, features_count)
 
-    columns_names = ["feature_"+str(features_code)+"_"+str(i) for i in features_range]
+    columns_names = \
+        ["feature_"+str(features_code)+"_"+str(i) for i in features_range]
     columns_names.insert(0, 'features_code')
     data_expanded.columns = columns_names
 
@@ -64,7 +65,7 @@ def preprocess_features(data, standardizer=standirdize):
 
     # convert to int
     for col in data.columns[1:]:
-        data[col] = data[col].astype(int) 
+        data[col] = data[col].astype(int)
 
     # standardize required columns
     for i in range(1, features_count):
@@ -73,29 +74,37 @@ def preprocess_features(data, standardizer=standirdize):
         data[new_col] = standardizer(data[col].values)
 
     # get integer index of of maximum features value for fixed vacancy
-    data['max_feature_'+str(features_code)+'_index'] = data.iloc[:, 2:features_count+1].idxmax(axis=1).apply(lambda x: x.split('_')[-1])
+    new_col_name = 'max_feature_'+str(features_code)+'_index'
+    data[new_col_name] = data.iloc[:, 2:features_count+1].idxmax(axis=1)
+    data[new_col_name] = data[new_col_name].apply(lambda x: x.split('_')[-1])
 
-    # temporaty column with information of mean of feature in with fixed vacancy has maximum
-    def mean_of_column_with_idxmax(i):
+    # temporaty column with information of mean of feature in with fixed
+    # vacancy has maximum
+    def mean_column(i):
         # returns mean of column based on columns index
         col = "feature_"+str(features_code)+"_"+str(i)
         return data[col].mean()
 
-    data['mean_of_column_with_idxmax'] = data['max_feature_'+str(features_code)+'_index'].apply(mean_of_column_with_idxmax)
+    data['mean_of_column_with_idxmax'] = \
+        data['max_feature_'+str(features_code)+'_index'].apply(mean_column)
 
-    # absolute deviation of feature with max value in fixed vacancy from mean value of that feature
-    data['max_feature_'+str(features_code)+'_abs_mean_diff'] = np.abs(data.iloc[:, 2:features_count+1].max(axis=1)-data['mean_of_column_with_idxmax'])
+    # absolute deviation of feature with max value in fixed vacancy from mean
+    # value of that feature
+    new_colname = 'max_feature_'+str(features_code)+'_abs_mean_diff'
+    data[new_colname] = np.abs(data.iloc[:, 2:features_count+1].max(axis=1) -
+                               data['mean_of_column_with_idxmax'])
 
     # preparing resulting columns
-    final_columns=['id_job']
-    final_columns = final_columns +['feature_'+str(features_code)+'_stand_'+str(i) for i in range(1, features_count)]
+    final_columns = ['id_job']
+    final_columns += ['feature_' + str(features_code) + '_stand_' + str(i)
+                      for i in range(1, features_count)]
     final_columns.append('max_feature_'+str(features_code)+'_index')
     final_columns.append('max_feature_'+str(features_code)+'_abs_mean_diff')
     return data[final_columns]
 
+
 def test_proc():
     # For testing purpose
-    test_data = pd.read_csv('test.tsv',sep='\t')
+    test_data = pd.read_csv('test.tsv', sep='\t')
     test_prepricessed = preprocess_features(test_data)
-    test_prepricessed.to_csv('test_proc.tsv',sep='\t',index=None)
-    
+    test_prepricessed.to_csv('test_proc.tsv', sep='\t', index=None)
